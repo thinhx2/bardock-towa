@@ -95,6 +95,10 @@ static atomic_t auxpcm_mi2s_clk_ref;
 static bool quat_mi2s_master = false;
 #endif
 
+#ifdef CONFIG_TOWA_PRODUCT
+int aw8737_pa_ctrl_gpio = -1;
+#endif
+
 static int msm8952_enable_dig_cdc_clk(struct snd_soc_codec *codec, int enable,
 					bool dapm);
 static bool msm8952_swap_gnd_mic(struct snd_soc_codec *codec);
@@ -287,6 +291,34 @@ int is_ext_spk_gpio_support(struct platform_device *pdev,
 	}
 	return 0;
 }
+
+#ifdef CONFIG_TOWA_PRODUCT
+int aw8737_spk_pa_init(struct platform_device *pdev)
+{
+    int ret = 0;
+
+    pr_info("%s: AW8737: enter here to init aw8737\n", __func__);
+
+    aw8737_pa_ctrl_gpio = of_get_named_gpio(pdev->dev.of_node,
+        "qcom,aw8737-ctrl-gpio", 0);
+
+    if (gpio_is_valid(aw8737_pa_ctrl_gpio)) {
+        ret = gpio_request(aw8737_pa_ctrl_gpio, "aw8737_pa_ctrl_gpio");
+        if (ret) {
+            pr_err("%s: gpio_request failed for aw8737_pa_ctrl_gpio %d.\n",
+                __func__, ret);
+            return -EINVAL;
+        }
+
+        gpio_direction_output(aw8737_pa_ctrl_gpio, 0);
+    } else {
+        pr_err("%s: Invalid aw8737 ctrl gpio: %d", __func__, aw8737_pa_ctrl_gpio);
+        return -EINVAL;
+       }
+
+       return 0;
+}
+#endif
 
 static int enable_spk_ext_pa(struct snd_soc_codec *codec, int enable)
 {
@@ -676,7 +708,7 @@ static int msm_mi2s_sclk_ctl(struct snd_pcm_substream *substream, bool enable)
 				    mi2s_rx_clk.clk_freq_in_hz =
 						get_mi2s_clk_val(port_id);
 				}
-				pr_err("%s: pord_id 0x%x, clk_id 0x%x, clk_freq %d\n", 
+				pr_err("%s: pord_id 0x%x, clk_id 0x%x, clk_freq %d\n",
 					                      __func__, port_id,  mi2s_rx_clk.clk_id, mi2s_rx_clk.clk_freq_in_hz);
 				ret = afe_set_lpass_clock_v2(port_id,
 							&mi2s_rx_clk);
@@ -1886,14 +1918,14 @@ static void *def_msm8952_wcd_mbhc_cal(void)
 	 */
 	btn_low[0] = 75;
 	btn_high[0] = 75;
-	btn_low[1] = 200;
-	btn_high[1] = 200;
-	btn_low[2] = 400;
-	btn_high[2] = 400;
-	btn_low[3] = 500;
-	btn_high[3] = 500;
-	btn_low[4] = 500;
-	btn_high[4] = 500;
+	btn_low[1] = 300;
+	btn_high[1] = 300;
+	btn_low[2] = 500;
+	btn_high[2] = 500;
+	btn_low[3] = 700;
+	btn_high[3] = 700;
+	btn_low[4] = 700;
+	btn_high[4] = 700;
 
 	return msm8952_wcd_cal;
 }
@@ -3691,6 +3723,11 @@ parse_mclk_freq:
 			ret);
 		goto err;
 	}
+#ifdef CONFIG_TOWA_PRODUCT
+       ret = aw8737_spk_pa_init(pdev);
+       if (ret < 0)
+              pr_err("%s:  aw8737 init failed\n", __func__);
+#endif
 	return 0;
 err:
 	if (pdata->vaddr_gpio_mux_spkr_ctl)
@@ -3735,6 +3772,10 @@ static int msm8952_asoc_machine_remove(struct platform_device *pdev)
 		iounmap(pdata->vaddr_gpio_mux_pcm_ctl);
 	if (pdata->vaddr_gpio_mux_quin_ctl)
 		iounmap(pdata->vaddr_gpio_mux_quin_ctl);
+#ifdef CONFIG_TOWA_PRODUCT
+       if (gpio_is_valid(aw8737_pa_ctrl_gpio))
+	       gpio_free(aw8737_pa_ctrl_gpio);
+#endif
 	if (bear_card.num_aux_devs > 0) {
 		for (i = 0; i < bear_card.num_aux_devs; i++) {
 			kfree(msm8952_aux_dev[i].codec_name);

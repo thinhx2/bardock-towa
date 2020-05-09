@@ -743,8 +743,10 @@ int32_t msm_sensor_init_device_name(void)
 int32_t msm_sensor_driver_probe(void *setting,
 	struct msm_sensor_info_t *probed_info, char *entity_name)
 {
+#ifndef CONFIG_TOWA_PRODUCT
 	uint8_t i = 0;
 	uint8_t j = 0;
+#endif	
 	int32_t                              rc = 0;
 	struct msm_sensor_ctrl_t            *s_ctrl = NULL;
 	struct msm_camera_cci_client        *cci_client = NULL;
@@ -753,8 +755,10 @@ int32_t msm_sensor_driver_probe(void *setting,
 
 	unsigned long                        mount_pos = 0;
 	uint32_t                             is_yuv;
+#ifndef CONFIG_TOWA_PRODUCT
 	uint8_t                              module_probed = 0;
 	/* Validate input parameters */
+#endif
 	if (!setting) {
 		pr_err("failed: slave_info %pK", setting);
 		return -EINVAL;
@@ -834,7 +838,21 @@ int32_t msm_sensor_driver_probe(void *setting,
 		}
 	}
 
-	CDBG("%s camera eeprom_name=%s\n",__func__, slave_info->eeprom_name);//slave_info is from userspace
+#ifdef CONFIG_TOWA_PRODUCT
+	if (strlen(slave_info->sensor_name) >= MAX_SENSOR_NAME ||
+		strlen(slave_info->eeprom_name) >= MAX_SENSOR_NAME ||
+		strlen(slave_info->actuator_name) >= MAX_SENSOR_NAME ||
+		strlen(slave_info->ois_name) >= MAX_SENSOR_NAME) {
+		pr_err("failed: name len greater than 32.\n");
+		pr_err("sensor name len:%zu, eeprom name len: %zu.\n",
+			strlen(slave_info->sensor_name),
+			strlen(slave_info->eeprom_name));
+		pr_err("actuator name len: %zu, ois name len:%zu.\n",
+			strlen(slave_info->actuator_name),
+			strlen(slave_info->ois_name));
+		rc = -EINVAL;
+#else
+		CDBG("%s camera eeprom_name=%s\n",__func__, slave_info->eeprom_name);//slave_info is from userspace
 	CDBG("%s slave_info->sensor_name =%s\n",__func__, slave_info->sensor_name);//slave_info is from userspace
 	for(i=0; i<CAMERA_VENDOR_EEPROM_COUNT_MAX; i++){
 		//s_vendor_eeprom is from kernel camera dtsi
@@ -856,6 +874,7 @@ int32_t msm_sensor_driver_probe(void *setting,
 	if(!module_probed){
 		pr_err("module not found!probe break!\n");
 		rc = -EFAULT;
+#endif
 		goto free_slave_info;
 	}
 

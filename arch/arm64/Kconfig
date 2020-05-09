@@ -370,6 +370,12 @@ config MSM8953_PRODUCT
 	  Say Y here if MSM8953
 	  If unsure, say N.
 
+config TOWA_PRODUCT
+	bool "TOWA PRODUCT"
+	default n
+	help
+	  Say Y here if TOWA
+
 menu "Bus support"
 
 config ARM_AMBA
@@ -1125,7 +1131,7 @@ config ARM64_ERRATUM_843419
 	  If unsure, say Y.
 
 endmenu
-
+	  
 source "net/Kconfig"
 
 source "drivers/Kconfig"

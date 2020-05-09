@@ -1135,6 +1135,14 @@ config TOUCHSCREEN_GT9XX
 	  report 5 touches at a time.
 
           If unsure, say N.
+
+config TOUCHSCREEN_NT36572_ZQL1818
+	bool "Novatek NT36572"
+	depends on I2C
+	help
+	  Say Y here if you have a Novatek NT36xxx touchscreen connected
+	  to your system.
+          If unsure, say N.
           
 config TOUCHSCREEN_TP_VERSION
 	default n

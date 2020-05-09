@@ -210,12 +210,18 @@ static void mdss_dsi_panel_cmds_send(struct mdss_dsi_ctrl_pdata *ctrl,
 
 	mdss_dsi_cmdlist_put(ctrl, &cmdreq);
 }
-
+#ifdef CONFIG_TOWA_PRODUCT
+static char led_pwm1[3] = {0x51,0x0F,0xFF};	/* DTYPE_DCS_WRITE1 */
+static struct dsi_cmd_desc backlight_cmd[] = {
+	{{DTYPE_DCS_LWRITE, 1, 0, 0, 1, sizeof(led_pwm1)},led_pwm1},
+};
+#else
 static char led_pwm1[2] = {0x51, 0x0};	/* DTYPE_DCS_WRITE1 */
 static struct dsi_cmd_desc backlight_cmd = {
 	{DTYPE_DCS_WRITE1, 1, 0, 0, 1, sizeof(led_pwm1)},
 	led_pwm1
 };
+#endif
 
 static void mdss_dsi_panel_bklt_dcs(struct mdss_dsi_ctrl_pdata *ctrl, int level)
 {
@@ -230,11 +236,44 @@ static void mdss_dsi_panel_bklt_dcs(struct mdss_dsi_ctrl_pdata *ctrl, int level)
 
 	pr_debug("%s: level=%d\n", __func__, level);
 
+#ifdef CONFIG_TOWA_PRODUCT
+	if(level!=0){
+	/* add by wangshouping for 2st lcd 2018.5.29 */
+	/*modified by alan for backlight*/
+	
+	if(pinfo->lcd_id==0)//for novtek
+	{
+		led_pwm1[1] = (unsigned char)((level*((0xFFF)/0xFF)+0x0F)>>8);
+		led_pwm1[2] = (unsigned char)((level*((0xFFF)/0xFF)+0x0F)&0x0FF);
+	}
+	else //for ft
+	{
+		led_pwm1[1] = (unsigned char)((level*((0xFFF)/0xFF)+0x0F)>>4);
+		led_pwm1[2] = (unsigned char)((level*((0xFFF)/0xFF)+0x0F)&0x0F);
+	}
+		//led_pwm1[1] = (unsigned char)(level>>8);
+		//led_pwm1[2] = (unsigned char)(level&0x0FF);
+		//printk("wsp: level=%d,pwm1[1]:%d,pwm1[2]:%d \n",level,led_pwm1[1],led_pwm1[2]);
+	/*modified by alan for backlight*/
+	/* add by wangshouping for 2st lcd 2018.5.29 */
+	}else{
+	/*modified by alan for backlight*/
+		led_pwm1[1] = 0x00;
+		led_pwm1[2] = 0x00;
+	/*modified by alan for backlight*/
+	}
+#else
 	led_pwm1[1] = (unsigned char)level;
+#endif
 
 	memset(&cmdreq, 0, sizeof(cmdreq));
+#ifdef CONFIG_TOWA_PRODUCT
+	cmdreq.cmds = backlight_cmd;
+	cmdreq.flags = CMD_REQ_COMMIT | CMD_CLK_CTRL | CMD_REQ_HS_MODE;
+#else
 	cmdreq.cmds = &backlight_cmd;
 	cmdreq.flags = CMD_REQ_COMMIT;
+#endif
 	cmdreq.cmds_cnt = 1;
 	cmdreq.rlen = 0;
 	cmdreq.cb = NULL;
@@ -304,12 +343,34 @@ static int mdss_dsi_request_gpios(struct mdss_dsi_ctrl_pdata *ctrl_pdata)
 			goto disp_en_gpio_err;
 		}
 	}
+#ifdef CONFIG_TOWA_PRODUCT
+	if (gpio_is_valid(ctrl_pdata->rst_gpio))
+	{
+		rc = gpio_request(ctrl_pdata->rst_gpio, "disp_rst_n");
+		if (rc) {
+			pr_err("request reset gpio failed, rc = %d\n",
+				rc);
+			goto rst_gpio_err;
+		}
+	}
+	if (gpio_is_valid(ctrl_pdata->tp_reset_gpio))
+	{
+		rc = gpio_request(ctrl_pdata->tp_reset_gpio, "tp_reset_gpio");
+		if (rc) {
+			pr_err("request tp_reset_gpio failed,rc = %d\n",
+				rc);
+			goto tp_reset_gpio_err;
+		}
+	}
+#else
+
 	rc = gpio_request(ctrl_pdata->rst_gpio, "disp_rst_n");
 	if (rc) {
 		pr_err("request reset gpio failed, rc=%d\n",
 			rc);
 		goto rst_gpio_err;
 	}
+#endif
 	if (gpio_is_valid(ctrl_pdata->bklt_en_gpio)) {
 		rc = gpio_request(ctrl_pdata->bklt_en_gpio,
 						"bklt_enable");
@@ -333,6 +394,12 @@ mode_gpio_err:
 	if (gpio_is_valid(ctrl_pdata->bklt_en_gpio))
 		gpio_free(ctrl_pdata->bklt_en_gpio);
 bklt_en_gpio_err:
+#ifdef CONFIG_TOWA_PRODUCT
+	if (gpio_is_valid(ctrl_pdata->tp_reset_gpio))
+	gpio_free(ctrl_pdata->tp_reset_gpio);
+tp_reset_gpio_err:
+	if (gpio_is_valid(ctrl_pdata->rst_gpio))
+#endif
 	gpio_free(ctrl_pdata->rst_gpio);
 rst_gpio_err:
 	if (gpio_is_valid(ctrl_pdata->disp_en_gpio))
@@ -487,8 +554,19 @@ int mdss_dsi_panel_reset(struct mdss_panel_data *pdata, int enable)
 			gpio_set_value((ctrl_pdata->disp_en_gpio), 0);
 			gpio_free(ctrl_pdata->disp_en_gpio);
 		}
+#ifdef CONFIG_TOWA_PRODUCT
+		if (gpio_is_valid(ctrl_pdata->rst_gpio)) 
+		{
+			gpio_free(ctrl_pdata->rst_gpio);
+		}
+		if (gpio_is_valid(ctrl_pdata->tp_reset_gpio)) 
+		{
+			gpio_free(ctrl_pdata->tp_reset_gpio);
+		}
+#else
 		gpio_set_value((ctrl_pdata->rst_gpio), 1);
 		gpio_free(ctrl_pdata->rst_gpio);
+#endif
 		if (gpio_is_valid(ctrl_pdata->mode_gpio))
 			gpio_free(ctrl_pdata->mode_gpio);
 	}
@@ -2857,6 +2935,9 @@ int mdss_dsi_panel_init(struct device_node *node,
 	int ndx)
 {
 	int rc = 0;
+#ifdef CONFIG_TOWA_PRODUCT
+	u32 tmp;
+#endif
 	static const char *panel_name;
 	struct mdss_panel_info *pinfo;
 
@@ -2877,6 +2958,15 @@ int mdss_dsi_panel_init(struct device_node *node,
 		pr_info("%s: Panel Name = %s\n", __func__, panel_name);
 		strlcpy(&pinfo->panel_name[0], panel_name, MDSS_MAX_PANEL_LEN);
 	}
+#ifdef CONFIG_TOWA_PRODUCT
+	rc = of_property_read_u32(node, "qcom,mdss-dsi-panel-id", &tmp);
+	if (rc) {
+		pr_err("%s:%d, panel id not specified\n",
+						__func__, __LINE__);
+		return -EINVAL;
+	}
+	pinfo->lcd_id = tmp;
+#endif
 	rc = mdss_panel_parse_dt(node, ctrl_pdata);
 	if (rc) {
 		pr_err("%s:%d panel dt parse failed\n", __func__, __LINE__);
