@@ -2115,9 +2115,9 @@ recalibrate:
 	if ((qpnp_vadc_channel_post_scaling_calib_check(vadc, channel)) < 0)
 		pr_debug("Post scaling calib type not updated\n");
 
-#ifdef CONFIG_MSM8953_PRODUCT
+#ifdef CONFIG_MSM8953
 	if(vadc->adc->adc_channels[dt_index].channel_num == 17)
-		scale_type = SCALE_THERM_390K_PULLUP;
+		scale_type = 17;
 #endif
 
 	vadc_scale_fn[scale_type].chan(vadc, result->adc_code,

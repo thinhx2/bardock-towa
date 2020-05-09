@@ -878,6 +878,12 @@ config SND_SOC_TFA9896
 	help
 	TFA9896 driver
 
+config SND_SOC_TFA9894
+	tristate "Support TFA9894"
+	depends on I2C
+	help
+	TFA9894 driver
+
 config SND_SOC_ESS9118
 	tristate "Support ESS9118"
 	depends on I2C

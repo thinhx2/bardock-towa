@@ -846,7 +846,7 @@ int32_t msm_sensor_driver_probe(void *setting,
 				    (s_vendor_eeprom[i].module_id == camera_vendor_module_table[j].module_id)) {
 					module_probed = 1;
 					CDBG("module found!probe continue!eeprom_name=%s\n", slave_info->eeprom_name);
-	                                break;
+					break;
 				}
 			}
 			if (module_probed)

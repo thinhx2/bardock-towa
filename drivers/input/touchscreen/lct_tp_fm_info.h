@@ -7,4 +7,8 @@
 extern int init_tp_fm_info(u16 version_info_num, char* version_info_str, char *name);
 extern void update_tp_fm_info(char  *version_info_str);
 
+#ifdef CONFIG_JEICE_COMMON
+extern int tp_gesture_wakeup(void);
+#endif
+
 #endif

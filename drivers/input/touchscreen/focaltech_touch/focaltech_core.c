@@ -1273,7 +1273,7 @@ static int fts_ts_probe(struct i2c_client *client, const struct i2c_device_id *i
 //add for tp info start
     fts_update_fw_ver(data);
     fts_update_fw_vendor_id(data);
-#ifdef SUPPORT_READ_TP_VERSION	
+#ifdef SUPPORT_READ_TP_VERSION
   memset(fw_version, 0, sizeof(fw_version));
 	sprintf(fw_version, "[FW]0x%x, [IC]FT8716", data->fw_ver[0]);
 	init_tp_fm_info(0, fw_version, "FocalTech");

@@ -68,6 +68,8 @@ typedef enum __camera_vendor_module_id{
 	MID_SUNRISE,
 	MID_PRIMAX = 0x17,
 	MID_AVC,
+	MID_LCETRON = 0x1E,
+	MID_HOLITECH = 0x42,
 	MID_MAX
 } camera_vendor_module_id;
 

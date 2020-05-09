@@ -339,6 +339,9 @@
 
 /* Code 255 is reserved for special needs of AT keyboard driver */
 
+#define KEY_ANT_CONNECT		0x292
+#define KEY_ANT_UNCONNECT	0x293
+
 #define KEY_HALL_OPEN	0x222
 #define KEY_HALL_CLOSE	0x223
 

@@ -567,6 +567,7 @@ struct fg_chip {
 	int			status;
 	int			prev_status;
 	int			health;
+	int                     battery_full_design;
 	enum fg_batt_aging_mode	batt_aging_mode;
 	struct alarm		hard_jeita_alarm;
 	/* capacity learning */
@@ -4645,7 +4646,7 @@ static int fg_power_get_property(struct power_supply *psy,
 			val->intval = 1;
 		break;
 	case POWER_SUPPLY_PROP_CHARGE_FULL_DESIGN:
-		val->intval = chip->nom_cap_uah;
+		val->intval = chip->battery_full_design;
 		break;
 	case POWER_SUPPLY_PROP_CHARGE_FULL:
 		val->intval = chip->learning_data.learned_cc_uah;
@@ -6431,6 +6432,12 @@ wait:
 		pr_err("battery profile incorrect size: %d\n", len);
 		rc = -EINVAL;
 		goto no_profile;
+	}
+
+	rc = of_property_read_u32(profile_node, "qcom,battery-full-design", &chip->battery_full_design);
+	if (rc < 0) {
+		pr_err("No profile data available\n");
+		return -ENODATA;
 	}
 
 	rc = of_property_read_string(profile_node, "qcom,battery-type",

@@ -198,7 +198,6 @@ static void do_input_boost_rem(struct work_struct *work)
 			pr_err("cpu-boost: HMP boost disable failed\n");
 		sched_boost_active = false;
 	}
-	
 	is_special_input_boost=false;
 }
 
@@ -230,7 +229,7 @@ static void do_input_boost(struct work_struct *work)
 			pr_err("cpu-boost: HMP boost enable failed\n");
 		else
 			sched_boost_active = true;
-		
+
 		queue_delayed_work(cpu_boost_wq, &input_boost_rem,
 						msecs_to_jiffies(special_input_boost_ms));
 	} else {
@@ -263,20 +262,23 @@ static void cpuboost_input_event(struct input_handle *handle,
 {
 	u64 now;
 
+	pr_debug("cpuboost_input_event: code=%d, value=%d\n",code, value);
+
 	if (is_special_input_boost)
 		return;
 		
 	if (code == 116 && value == 1) {
-		printk("special boost: power\n");
+		//printk("special boost: power\n");
 		special_input_boost_ms = SPECIAL_BOOST_MS_POWERKEY;
 		is_special_input_boost = true;
 	} else if (code == 608 && value == 1) {
-		printk("special boost: FP_TAP\n");
+		//printk("special boost: FP_TAP\n");
 		special_input_boost_ms = SPECIAL_BOOST_MS_FP;
 		is_special_input_boost = true;
 	} else {
 		return;
 	}
+	
 	if (!input_boost_enabled && !is_special_input_boost )
 		return;
 

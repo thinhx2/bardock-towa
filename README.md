@@ -2,7 +2,7 @@ WHAT IS THIS?
 =============
 
 Linux Kernel source code for the devices:
-* bq aquaris X
+* bq aquaris C
 
 
 BUILD INSTRUCTIONS?
@@ -11,21 +11,21 @@ BUILD INSTRUCTIONS?
 Specific sources are separated by releases with it's corresponding number. First, you should
 clone the project:
 
-        $ git clone https://github.com/bq/aquaris-X.git
+        $ git clone https://github.com/bq/aquaris-C.git
 
 After it, choose the release you would like to build:
 
-*Aquaris X*
+*Aquaris C*
 
-        $ mv aquaris-X kernel
+        $ mv aquaris-C kernel
         $ cd kernel
         $ git checkout tags/{release}
 
 At the same level of the "kernel" directory:
 
-Download a prebuilt gcc:
+Download a prebuilt gcc
 
-        $ git clone https://android.googlesource.com/platform/prebuilts/gcc/linux-x86/aarch64/aarch64-linux-android-4.9
+        $ git clone https://android.googlesource.com/platform/prebuilts/gcc/linux-x86/arm/arm-eabi-4.8
 
 Create KERNEL_OUT dir:
 
@@ -33,19 +33,19 @@ Create KERNEL_OUT dir:
 
 Your directory tree should look like this:
 * kernel
-* aarch64-linux-android-4.9
+* arm-eabi-4.8
 * KERNEL_OUT
 
 Finally, build the kernel according the next table of product names:
 
 | device                    | product                 |
 | --------------------------|-------------------------|
-| bq aquaris X              | bardock                 |
+| bq aquaris C              | jeice                   |
 
 
-        $ make -C kernel O=../KERNEL_OUT ARCH=arm64 CROSS_COMPILE=../aarch64-linux-android-4.9 {product}_defconfig
-        $ make O=../KERNEL_OUT/ -C kernel ARCH=arm64 CROSS_COMPILE=../aarch64-linux-android-4.9/bin/aarch64-linux-android-
+        $ make -C kernel  O=../KERNEL_OUT  ARCH=arm CROSS_COMPILE=../arm-eabi-4.8/bin/arm-eabi- {product}_defconfig
+        $ make O=../KERNEL_OUT/ -C kernel ARCH=arm  CROSS_COMPILE=../arm-eabi-4.8/bin/arm-eabi-
 
 You can specify "-j CORES" argument to speed-up your compilation, example:
 
-        $ make O=../KERNEL_OUT/ -C kernel ARCH=arm64 CROSS_COMPILE=../aarch64-linux-android-4.9/bin/aarch64-linux-android- -j 8
+        $ make O=../KERNEL_OUT/ -C kernel ARCH=arm  CROSS_COMPILE=../arm-eabi-4.8/bin/arm-eabi- -j 8

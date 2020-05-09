@@ -227,9 +227,6 @@ module_param(disable_slots, int, S_IRUGO|S_IWUSR);
 static bool nocmdq;
 module_param(nocmdq, bool, S_IRUGO|S_IWUSR);
 
-static bool boot_to_recovery;
-core_param(boot_to_recovery, boot_to_recovery, bool, 0444);
-
 enum vdd_io_level {
 	/* set vdd_io_data->low_vol_level */
 	VDD_IO_LOW,
@@ -1664,13 +1661,7 @@ struct sdhci_msm_pltfm_data *sdhci_msm_populate_pdata(struct device *dev,
 		goto out;
 	}
 
-	if (boot_to_recovery && of_find_property(np, "recovery-broken-cd", &len))
-		pdata->status_gpio = -ENOENT;
-	else
-		pdata->status_gpio = of_get_named_gpio_flags(np, "cd-gpios", 0, &flags);
-
-	dev_info(dev, "cd-gpios status_gpio=%d", pdata->status_gpio);
-
+	pdata->status_gpio = of_get_named_gpio_flags(np, "cd-gpios", 0, &flags);
 	if (gpio_is_valid(pdata->status_gpio) & !(flags & OF_GPIO_ACTIVE_LOW))
 		pdata->caps2 |= MMC_CAP2_CD_ACTIVE_HIGH;
 
@@ -3944,6 +3935,40 @@ static bool sdhci_msm_is_bootdevice(struct device *dev)
 	return true;
 }
 
+#if defined CARD_SLOT_NODE_IN_FACTORY
+static struct kobject *card_slot_device = NULL;
+static struct sdhci_host *card_host =NULL;
+static ssize_t card_slot_status_show(struct device *dev,
+					       struct device_attribute *attr, char *buf)
+{
+	return snprintf(buf, PAGE_SIZE, "%d\n", mmc_gpio_get_cd(card_host->mmc));
+}
+
+static DEVICE_ATTR(card_slot_status, S_IRUGO ,
+						card_slot_status_show, NULL);
+
+int32_t card_slot_init_device_name(void)
+{
+	int32_t error = 0;
+	if(card_slot_device != NULL){
+		pr_err("card_slot already created\n");
+		return 0;
+	}
+	card_slot_device = kobject_create_and_add("card_slot", NULL);
+	if (card_slot_device == NULL) {
+		printk("%s: card_slot register failed\n", __func__);
+		error = -ENOMEM;
+		return error ;
+	}
+	error = sysfs_create_file(card_slot_device, &dev_attr_card_slot_status.attr);
+	if (error) {
+		printk("%s: card_slot_status_create_file failed\n", __func__);
+		kobject_del(card_slot_device);
+	}
+	
+	return 0 ;
+}
+#endif
 static int sdhci_msm_probe(struct platform_device *pdev)
 {
 	struct sdhci_host *host;
@@ -4395,8 +4420,6 @@ static int sdhci_msm_probe(struct platform_device *pdev)
 	if (ret)
 		goto remove_host;
 
-	pr_info("status_gpio=%d valid=%d", msm_host->pdata->status_gpio, gpio_is_valid(msm_host->pdata->status_gpio));
-
 	if (!gpio_is_valid(msm_host->pdata->status_gpio)) {
 		msm_host->polling.show = show_polling;
 		msm_host->polling.store = store_polling;
@@ -4406,6 +4429,12 @@ static int sdhci_msm_probe(struct platform_device *pdev)
 		ret = device_create_file(&pdev->dev, &msm_host->polling);
 		if (ret)
 			goto remove_max_bus_bw_file;
+
+#if defined CARD_SLOT_NODE_IN_FACTORY
+	}else{
+		card_host = dev_get_drvdata(&pdev->dev);
+		card_slot_init_device_name();	
+#endif
 	}
 
 	msm_host->auto_cmd21_attr.show = show_auto_cmd21;

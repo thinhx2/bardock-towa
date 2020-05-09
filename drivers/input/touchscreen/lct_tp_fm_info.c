@@ -11,7 +11,10 @@ static struct kobject *msm_tp_device;
 static u16 tp_ver_show = 0;
 static char tp_ver_show_str[80] = {0x00};
 static char module_name[80] = {0x00};
-
+#ifdef CONFIG_JEICE_COMMON
+static struct kobject *tp_gesture_device;
+static int gesture_wakeup = 0;
+#endif
 static ssize_t msm_tp_module_id_show(struct device *dev,
 		struct device_attribute *attr, char *buf)
 {
@@ -32,7 +35,29 @@ static ssize_t msm_tp_module_id_show(struct device *dev,
 
 	return rc;
 }
+#ifdef CONFIG_JEICE_COMMON
+static ssize_t msm_tp_gesture_show(struct device *dev,
+		struct device_attribute *attr, char *buf)
+{
+	ssize_t rc = 0;
 
+	sprintf(buf, "%d\n", gesture_wakeup);
+	rc = strlen(buf) + 1;
+
+	return rc;
+}
+static ssize_t msm_tp_gesture_store(struct device *dev,
+	struct device_attribute *attr, const char *buf, size_t len)
+{
+	if(1!=sscanf(buf,"%d",&gesture_wakeup))
+		pr_info("%s: failed\n", __func__);
+	
+	return len;
+
+}
+
+static DEVICE_ATTR(wakeup_gesture_enable, 0644, msm_tp_gesture_show, msm_tp_gesture_store);
+#endif
 static DEVICE_ATTR(tp_info, 0444, msm_tp_module_id_show, NULL);
 static int tp_fm_creat_sys_entry(void)
 {
@@ -44,11 +69,26 @@ static int tp_fm_creat_sys_entry(void)
 		rc = -ENOMEM;
 		return rc ;
 	}
+
 	rc = sysfs_create_file(msm_tp_device, &dev_attr_tp_info.attr);
 	if (rc) {
 		pr_info("%s: sysfs_create_file failed\n", __func__);
 		kobject_del(msm_tp_device);
 	}
+
+#ifdef CONFIG_JEICE_COMMON
+	tp_gesture_device= kobject_create_and_add("android_touch", NULL);
+	if (tp_gesture_device == NULL) {
+		pr_info("%s: subsystem_register failed\n", __func__);
+		rc = -ENOMEM;
+		return rc ;
+	}
+	rc = sysfs_create_file(tp_gesture_device, &dev_attr_wakeup_gesture_enable.attr);
+	if (rc) {
+		pr_info("%s: sysfs_create_file failed\n", __func__);
+		kobject_del(tp_gesture_device);
+	}
+#endif
 
 	return 0 ;
 }
@@ -76,6 +116,47 @@ static ssize_t tp_proc_tp_info_read(struct file *file, char __user *buf, size_t 
     return cnt;
 }
 
+#ifdef CONFIG_JEICE_COMMON
+static ssize_t tp_proc_gesture_wakeup_read(struct file *file, char __user *buf, size_t size, loff_t *ppos)
+{
+	int cnt=0;
+	char buff[12] = {0};
+	cnt=sprintf(buff,"%d\n",gesture_wakeup);
+	cnt += sprintf(buff + cnt, "\n");
+	if(copy_to_user(buf, buff,sizeof(buff)))
+		pr_err("%s %d copy_to_user \n",__func__,__LINE__);
+	printk("%s,%d,gesture_wakeup =%d\n",__func__,__LINE__,gesture_wakeup);
+	return cnt;
+
+}
+
+static ssize_t tp_proc_gesture_wakeup_write(struct file *file, const char *buff,size_t len, loff_t *pos)
+{
+	char buf[12] = {0};
+	if(len > 12)
+		len =12;
+	if(copy_from_user(buf, buff, len))
+		pr_err("%s %d copy_from_user \n",__func__,__LINE__);
+	if(buf[0]=='0'||buf[0]==0)
+		gesture_wakeup = 0;
+	else
+		gesture_wakeup = 1;
+
+	printk("%s,%d,gesture_wakeup=%d\n",__func__,__LINE__,gesture_wakeup);
+	return len;
+}
+
+static const struct file_operations tp_proc_gesture_wakeup_fops = {
+	.read		= tp_proc_gesture_wakeup_read,
+	.write		= tp_proc_gesture_wakeup_write,	
+};
+
+int tp_gesture_wakeup(void)
+{
+	return gesture_wakeup;
+}
+#endif
+
 static const struct file_operations tp_proc_tp_info_fops = {
 	.read		= tp_proc_tp_info_read,
 };
@@ -89,9 +170,16 @@ static int tp_fm_creat_proc_entry(void)
 	{
 		pr_err("add /proc/tp_info error \n");
 	}
-
+#ifdef CONFIG_JEICE_COMMON
+	proc_entry_tp = proc_create_data("gesture_wakeup", 0666, NULL, &tp_proc_gesture_wakeup_fops, NULL);
+	if (IS_ERR_OR_NULL(proc_entry_tp))
+	{
+		pr_err("add /proc/gesture_wakeup error \n");
+	}
+#endif
     return 0;
 }
+
 
 int init_tp_fm_info(u16 version_info_num, char* version_info_str, char *name)
 {

@@ -421,7 +421,6 @@ enum wake_reason {
 #define	HVDCP_OTG_VOTER			"HVDCP_OTG_VOTER"
 #define	HVDCP_PULSING_VOTER		"HVDCP_PULSING_VOTER"
 
-#define RUNIN_BATT_CAPACITY_CONTROL
 #ifdef RUNIN_BATT_CAPACITY_CONTROL
 static int BatteryTestStatus_enable;
 static void runin_work(struct smbchg_chip *chip, int batt_capacity);
@@ -1162,6 +1161,18 @@ static int get_prop_batt_full_charge(struct smbchg_chip *chip)
 	if (rc) {
 		pr_smb(PR_STATUS, "Couldn't get charge_full rc = %d\n", rc);
 		bfc = DEFAULT_BATT_FULL_CHG_CAPACITY;
+	}
+	return bfc;
+}
+
+static int get_prop_batt_full_design(struct smbchg_chip *chip)
+{
+	int bfc, rc;
+
+	rc = get_property_from_fg(chip, POWER_SUPPLY_PROP_CHARGE_FULL_DESIGN, &bfc);
+	if (rc) {
+		pr_smb(PR_STATUS, "Couldn't get charge_full rc = %d\n", rc);
+		bfc = 3000;
 	}
 	return bfc;
 }
@@ -6196,6 +6207,7 @@ static enum power_supply_property smbchg_battery_properties[] = {
 	POWER_SUPPLY_PROP_VOLTAGE_NOW,
 	POWER_SUPPLY_PROP_RESISTANCE_ID,
 	POWER_SUPPLY_PROP_CHARGE_FULL,
+	POWER_SUPPLY_PROP_CHARGE_FULL_DESIGN,
 	POWER_SUPPLY_PROP_SAFETY_TIMER_ENABLE,
 	POWER_SUPPLY_PROP_INPUT_CURRENT_MAX,
 	POWER_SUPPLY_PROP_INPUT_CURRENT_SETTLED,
@@ -6401,6 +6413,9 @@ static int smbchg_battery_get_property(struct power_supply *psy,
 		break;
 	case POWER_SUPPLY_PROP_CHARGE_FULL:
 		val->intval = get_prop_batt_full_charge(chip);
+		break;
+	case POWER_SUPPLY_PROP_CHARGE_FULL_DESIGN:
+		val->intval = get_prop_batt_full_design(chip);
 		break;
 	case POWER_SUPPLY_PROP_TEMP:
 		val->intval = get_prop_batt_temp(chip);
@@ -8801,6 +8816,8 @@ static int smbchg_probe(struct spmi_device *spmi)
 	}
 
 #ifdef RUNIN_BATT_CAPACITY_CONTROL
+	BatteryTestStatus_enable = 1;
+
 	for (attr_count = 0; attr_count < ARRAY_SIZE(attrs); attr_count++) {
 		rc = sysfs_create_file(&chip->dev->kobj,
 						&attrs[attr_count].attr);

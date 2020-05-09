@@ -97,3 +97,5 @@ obj-$(CONFIG_TOUCHSCREEN_FT5X06)	+= lct_tp_fm_info.o
 obj-$(CONFIG_TOUCHSCREEN_FT5X06)	+= lct_ctp_selftest.o
 obj-$(CONFIG_TOUCHSCREEN_FT5X06)	+= lct_ctp_upgrade.o
 obj-$(CONFIG_TOUCHSCREEN_FT5X06)	+= lct_if_ctp_upgrade.o
+obj-$(CONFIG_TOUCHSCREEN_FTS_M1000)     += focaltech_touch_m1000/
+obj-$(CONFIG_TOUCHSCREEN_TP_VERSION)    += lct_tp_fm_info.o
